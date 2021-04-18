@@ -1,0 +1,10 @@
+semantic/semantic
+
+**/.make.out
+**/.make.outb
+**/.make.outf
+**/.make.outg
+**/lex.yy.c
+**/semantic.output
+**/semantic.tab.c
+**/semantic.tab.h

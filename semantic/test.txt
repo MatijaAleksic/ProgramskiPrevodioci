@@ -1,0 +1,18 @@
+int main(int s)
+{
+	int a,b,d;
+	
+	a = 5;
+	b = a++;
+	return a++;
+}
+
+void fun(int a, int b, int c, int g)
+{
+	return;
+}
+
+void fun1()
+{
+	return;
+}

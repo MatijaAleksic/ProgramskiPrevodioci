@@ -50,6 +50,7 @@
 "case"				 { return _CASE;}
 "=>"				 { return _ARROW;}
 "break"				 { return _BREAK;}
+"otherwise"			 { return _OTHERWISE; }
 
 [a-zA-Z][a-zA-Z0-9]* { yylval.s = strdup(yytext); 
                        return _ID; }

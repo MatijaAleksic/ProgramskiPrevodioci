@@ -30,6 +30,8 @@
   int for_indx = -1;
   
   int fun_call_params = 0;
+  
+  int check_tip = -1;
 
 %}
 
@@ -67,6 +69,7 @@
 %token _CASE 
 %token _ARROW
 %token _BREAK
+%token _OTHERWISE
 
 %type <i> num_exp exp literal function_call argument rel_exp
 
@@ -241,15 +244,10 @@ statement
   | if_statement
   | return_statement
   | while_statement
-  | {for_indx = get_last_element() + 1;} 
-  for_statement
-  | function_call
+  |{for_indx = get_last_element() + 1;} for_statement
+  | function_call _SEMICOLON
+  | check_statement
   ;
-  
-  
-  
-  
-  
   
   
   
@@ -260,31 +258,35 @@ statement
   
   
 check_statement
-  : _CHECK _LPAREN check_expression _RPARREN
-	_LBRACKET cases otherwise
+  : _CHECK _LPAREN check_expression _RPAREN
+	_LBRACKET cases otherwise _RBRACKET
   ;
   
 check_expression
   : _ID
 	  {
-		  if(lookup_symbol($3, VAR|PAR) == NO_INDEX)
+		  int id_indx = lookup_symbol($1, VAR|PAR);
+		  if(id_indx == NO_INDEX)
 			   err("'%s' must be defined", $1);
+		   
+		  check_tip = get_type(id_indx);
 	  }
   ;
 	
 cases
   : case_statement
-  : cases case_statement
+  | cases case_statement
   ;
   
 case_statement
-  : _CASE constant_expression _ARROW case_body
+  : _CASE literal
+  {  
+	  if(check_tip != get_type($2))
+			err("Case type and literal are not of the same type");
+  }
+  _ARROW case_body
   ;
 
-  
-constant_expression
-  :
-  ;
   
 case_body
   : statement
@@ -293,6 +295,7 @@ case_body
   
 otherwise
   : _OTHERWISE _ARROW statement
+  | _OTHERWISE _ARROW statement _BREAK _SEMICOLON
   ;
   
   
@@ -423,7 +426,7 @@ function_call
           err("'%s' is not a function", $1);
 	    fun_call_params = 0;
       }
-    _LPAREN arguments _RPAREN _SEMICOLON
+    _LPAREN arguments _RPAREN
       {
         if(get_atr1(fcall_idx) != fun_call_params)
           err("wrong number of args to function '%s'",get_name(fcall_idx));
@@ -434,12 +437,11 @@ function_call
 
 arguments
   : argument
-  | argument _COMMA argument
+  | arguments _COMMA argument
   ;
   
 argument
-  : /* empty */
-    { fun_call_params = 0; }
+  : /* empty */ {}
   | _ID
 	{ 
 		$$ = lookup_symbol($1, VAR|PAR);

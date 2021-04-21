@@ -30,6 +30,7 @@
   int for_indx = -1;
   
   int fun_call_params = 0;
+  int fun_call_params_check_type=0;
   
   int check_tip = -1;
 
@@ -83,7 +84,9 @@ program
       {  
         if(lookup_symbol("main", FUN) == NO_INDEX)
           err("undefined reference to 'main'");
+			print_symtab();
        }
+	   
   ;
 
 function_list
@@ -102,9 +105,10 @@ function
       }
     _LPAREN parameter_list _RPAREN body
       {
-        clear_symbols(fun_idx + 1);
+        //clear_symbols(fun_idx + 1);
         var_num = 0;
 		param_num = 0;
+		
       }
   ;
   
@@ -112,31 +116,33 @@ function
 parameter_list
   : /* empty */
       { set_atr1(fun_idx, 0); }
+  | parameters
+  ;
 
-  | _TYPE _ID
+parameters
+  : _TYPE _ID
       {
 		if($1 == VOID)
 			err("cannot assign void to parameter");
 		
 		
-		if(lookup_symbol($2,PAR) == NO_INDEX)
-			insert_symbol($2, PAR, $1, ++param_num, fun_idx);
+		insert_symbol($2, PAR, $1, ++param_num, fun_idx	);
         set_atr1(fun_idx, param_num);
         set_atr2(fun_idx, $1);
       }
-  | parameter_list _COMMA _TYPE _ID
+  | parameters _COMMA _TYPE _ID
 	  {
 		  if($3 == VOID)
 			err("cannot assign void to parameter");
 		
 		
-		if(lookup_symbol($4,PAR) == NO_INDEX)
-			insert_symbol($4, PAR, $3, ++param_num, fun_idx);
+		insert_symbol($4, PAR, $3, ++param_num, fun_idx);
         set_atr1(fun_idx, param_num);
         set_atr2(fun_idx, $3);
 	  }
   ;
-
+  ;
+  
 body
   : _LBRACKET 
 	  {
@@ -170,44 +176,56 @@ variable
  vars
   : _ID
 	  {
-		if(bloc_active = 0)
+		if(bloc_active == 0)
 		{
-			if(lookup_symbol($1, VAR|PAR) == NO_INDEX)
-			   insert_symbol($1, VAR, tip , ++var_num, NO_ATR);
-			else 
-			   err("redefinition of '%s'", $1);
+			int idx_var = lookup_symbol($1, VAR|PAR);
+			if(idx_var == NO_INDEX)
+			   insert_symbol($1, VAR, tip , ++var_num, fun_idx);
+			else
+				if(get_atr2(idx_var) == fun_idx)
+					err("redefinition of '%s'", $1);
+				else
+					insert_symbol($1, VAR, tip , ++var_num, fun_idx);
 		}
 		else
 	    {
-		  insert_symbol($1, VAR, tip , ++bloc_vars, NO_ATR);
+		  insert_symbol($1, VAR, tip , ++bloc_vars, fun_idx);
 	    }
       }
   | vars _COMMA _ID
 	{
-		if(bloc_active = 0)
+		if(bloc_active == 0)
 		{
-			if(lookup_symbol($3, VAR|PAR) == NO_INDEX)
-			   insert_symbol($3, VAR, tip , ++var_num, NO_ATR);
+			int idx_var = lookup_symbol($3, VAR|PAR);
+			if(idx_var == NO_INDEX)
+			   insert_symbol($3, VAR, tip , ++var_num, fun_idx);
 			else 
-			   err("redefinition of '%s'", $3 );
+				if(get_atr2(idx_var) == fun_idx)
+					err("redefinition of '%s'", $3 );
+				else
+					insert_symbol($3, VAR, tip , ++var_num, fun_idx);
 		}
 		else
 	    {
-		  insert_symbol($3, VAR, tip , ++bloc_vars, NO_ATR);
+		  insert_symbol($3, VAR, tip , ++bloc_vars, fun_idx);
 	    }
       }
   | _ID _ASSIGN literal
 	  {
-		if(bloc_active = 0)
+		if(bloc_active == 0)
 		{
-			if(lookup_symbol($1, VAR|PAR) == NO_INDEX)
-			   insert_symbol($1, VAR, tip , ++var_num, NO_ATR);
+			int idx_var = lookup_symbol($1, VAR|PAR);
+			if(idx_var == NO_INDEX)
+			   insert_symbol($1, VAR, tip , ++var_num, fun_idx);
 			else 
-			   err("redefinition of '%s'", $1);
+				if(get_atr2(idx_var) == fun_idx)
+					err("redefinition of '%s'", $1);
+				else
+					insert_symbol($1, VAR, tip , ++var_num, fun_idx);
 		}
 		else
 	    {
-		  insert_symbol($1, VAR, tip , ++bloc_vars, NO_ATR);
+		  insert_symbol($1, VAR, tip , ++bloc_vars, fun_idx);
 	    }
 		
 		if(get_type(lookup_symbol($1, VAR|PAR)) != get_type($3))
@@ -215,17 +233,20 @@ variable
       }
   | vars _COMMA _ID _ASSIGN literal
 	  {
-		
-		if(bloc_active = 0)
+		if(bloc_active == 0)
 		{
-			if(lookup_symbol($3, VAR|PAR) == NO_INDEX)
-			   insert_symbol($3, VAR, tip , ++var_num, NO_ATR);
+			int idx_var = lookup_symbol($3, VAR|PAR);
+			if(idx_var == NO_INDEX)
+			   insert_symbol($3, VAR, tip , ++var_num, fun_idx);
 			else 
-			   err("redefinition of '%s'", $3);
+				if(get_atr2(idx_var) == fun_idx)
+					err("redefinition of '%s'", $3);
+				else
+					insert_symbol($3, VAR, tip , ++var_num, fun_idx);
 		}
 		else
 	    {
-		  insert_symbol($3, VAR, tip , ++bloc_vars, NO_ATR);
+		  insert_symbol($3, VAR, tip , ++bloc_vars, fun_idx);
 	    }
 		
 		if(get_type(lookup_symbol($3, VAR|PAR)) != get_type($5))
@@ -247,14 +268,17 @@ statement
   |{for_indx = get_last_element() + 1;} for_statement
   | function_call _SEMICOLON
   | check_statement
+  | increment
   ;
   
   
-  
-  
-  
-  
-  
+increment
+  : _ID _INCREMENT _SEMICOLON
+	{
+	  if(lookup_symbol($1, VAR|PAR) == NO_INDEX)
+		err("Not defined:'%s'", $1 );
+	}
+  ;
   
   
 check_statement
@@ -297,21 +321,6 @@ otherwise
   : _OTHERWISE _ARROW statement
   | _OTHERWISE _ARROW statement _BREAK _SEMICOLON
   ;
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
   
 for_statement
   :
@@ -402,9 +411,13 @@ exp
           err("'%s' undeclared", $1);
 	  }
   | function_call
+	 {
+		 $$  = $1;
+	 }
   | _LPAREN num_exp _RPAREN
       { $$ = $2; }
   ;
+  
 
 literal
   : _INT_NUMBER
@@ -425,13 +438,13 @@ function_call
         if(fcall_idx == NO_INDEX)
           err("'%s' is not a function", $1);
 	    fun_call_params = 0;
+		fun_call_params_check_type = fcall_idx + 1;
       }
     _LPAREN arguments _RPAREN
       {
         if(get_atr1(fcall_idx) != fun_call_params)
           err("wrong number of args to function '%s'",get_name(fcall_idx));
-        set_type(FUN_REG, get_type(fcall_idx));
-        $$ = FUN_REG;
+        $$ = fcall_idx;
       }
   ;
 
@@ -447,11 +460,19 @@ argument
 		$$ = lookup_symbol($1, VAR|PAR);
         if($$ == NO_INDEX)
           err("'%s' undeclared", $1);
+		
+		int id_idx = lookup_symbol($1, VAR|PAR);
+		if(get_type(fun_call_params_check_type) != get_type(id_idx))
+			err("Type of parameter '%s' not valid", get_name(id_idx));
+		fun_call_params_check_type++;
 		fun_call_params++;
 	}
 	
   | literal
 	{
+		if(get_type(fun_call_params_check_type) != get_type($1))
+			err("Type of parameter '%d' not valid", fun_call_params);
+		fun_call_params_check_type++;
 		fun_call_params++;
 	}
   | _ID _INCREMENT
@@ -459,15 +480,13 @@ argument
 		$$ = lookup_symbol($1, VAR|PAR);
         if($$ == NO_INDEX)
           err("'%s' undeclared", $1);
+	  
+		int id_idx = lookup_symbol($1, VAR|PAR);
+		if(get_type(fun_call_params_check_type) != get_type(id_idx))
+			err("Type of parameter '%s' not valid", get_name(id_idx));
+		fun_call_params_check_type++;
+		fun_call_params++;
 	  }
-  /*| function_call*/
-  /*{ 
-      if(get_atr2(fcall_idx) != get_type($1))
-        err("incompatible type for argument in '%s'",
-            get_name(fcall_idx));
-      $$ = 1;
-    }
-  */
   ;
 
 if_statement
